@@ -1,10 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
+from qiskit import QuantumCircuit
 from qiskit.circuit.library import QFTGate
 from qiskit_aer import AerSimulator
 from qiskit.quantum_info import Statevector
- 
 from walsh_laplacian_pauli import decompose_walsh_laplacian, decompose_walsh_laplacian_base
 from walsh_potential_pauli import build_walsh_pauli_potential
 
@@ -15,8 +14,8 @@ def create_initial_wavefunction(N, initial_state="gaussian"):
     
     if initial_state == "gaussian": 
         x_values = np.linspace(0, 1, size, endpoint=False)
-        center = 0.25
-        sigma = 0.15
+        center = 0.5
+        sigma = 0.1
         psi = np.exp(-((x_values - center)**2) / (2 * sigma**2))
     else:
         raise ValueError(f"Unknown initial state: {initial_state}")
@@ -75,17 +74,7 @@ def create_potential_wp_circuit(N, dt, V0=1.0, potential_factor=None):
     return qc
 
 def create_trotter_step_circuit(N, dt, V0=1.0, walsh_factor=None, power_factor=None, potential_factor=None):
-    """
-    Create a second-order Trotter step circuit: exp(-i V dt/2) exp(-i K dt) exp(-i V dt/2)
-    
-    The circuit structure is:
-    1. exp(-i V_WP dt/2) - First half of potential evolution
-    2. QFT - Transform to momentum space
-    3. exp(-i K_WP dt) - Kinetic evolution in momentum space  
-    4. QFT† - Transform back to position space
-    5. exp(-i V_WP dt/2) - Second half of potential evolution
-    """
-     
+ 
     qc = QuantumCircuit(N)
     
     # Second-order Trotter: exp(-i V dt/2) exp(-i K dt) exp(-i V dt/2)
@@ -98,12 +87,12 @@ def create_trotter_step_circuit(N, dt, V0=1.0, walsh_factor=None, power_factor=N
     qft_gate = QFTGate(N)
     qc.append(qft_gate, range(N))
     
-    qc.x(0)
+    #qc.x(0)
     
     kinetic_circuit = create_kinetic_wp_circuit(N, dt, walsh_factor, power_factor)
     qc.compose(kinetic_circuit, inplace=True)
      
-    qc.x(0)
+    #qc.x(0)
     
     # QFT†
     qft_dagger = QFTGate(N).inverse()
@@ -266,17 +255,16 @@ def show_simulation_circuit(N, dt, V0=0):
 
 if __name__ == "__main__":
 
-    N = 8  
+    N = 10  
     T_final = 1 
-    n_steps = 100
-    V0 = 10   
+    dt = 0.005
+    n_steps = int(T_final / dt)
+    V0 = 0   
     initial_state = "gaussian"   
      
     walsh_factor = (np.pi**2) / 6  
     power_factor = 4**N         
     potential_factor = V0 / 12    
-    
-    dt = T_final / n_steps   
       
     simulation_circuit = show_simulation_circuit(N, dt, V0)
       
